@@ -13,6 +13,7 @@ IPAddress hostIp_temp;
 IPAddress hostIp_dust;
 WiFiClient client_temp;
 WiFiClient client_dust;
+WiFiClient client_time;
 uint8_t ret;
 const char* ssid = SECRET_SSID;
 const char* password = SECRET_PASS;
@@ -29,6 +30,20 @@ byte packetBuffer[ NTP_PACKET_SIZE];
 unsigned long epoch = 0;
 bool is_first = true;
 int time_connection_attempt = 0;
+char buf[40];
+char *time_cut = 0;
+char *time_val[8] = {0};
+int year;
+int month;
+int date;
+int day;
+int hour;
+int minute;
+int second;
+const char *day_arr[7] = {"Sun", "Mon", "Tue", "Wen", "Thu", "Fri", "Sat"};
+const char *month_arr[13] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+char DaysOfMonth[]={31,28,31,30,31,30,31,31,30,31,30,31};
+
 
 //온도
 double temp = 0.0;
@@ -120,27 +135,15 @@ void loop() {
   //시간
   if (button_state == 0) {
 
-    epoch += 1;
-    //Serial.print("The UTC time is ");       // UTC is the time at Greenwich Meridian (GMT)
-    lcd.begin(16, 2);
-    lcd.setCursor(0,0);
+    time_connectToServer();
     lcd.clear();
-    lcd.print((epoch  % 86400L) / 3600); // print the hour (86400 equals secs per day)
-    lcd.print(':');
-    if (((epoch % 3600) / 60) < 10) {
-      // In the first 10 minutes of each hour, we'll want a leading '0'
-      lcd.print('0');
-    }
-    lcd.print((epoch  % 3600) / 60); // print the minute (3600 equals secs per minute)
-    lcd.print(':');
-    if ((epoch % 60) < 10) {
-      // In the first 10 seconds of each minute, we'll want a leading '0'
-      lcd.print('0');
-    }
-    lcd.print(epoch % 60); // print the second
+    sprintf(buf, "%04d/%02d/%02d %s", year, month, date, day_arr[day]);
+    lcd.print(buf);
+    lcd.setCursor(0, 1);
+    sprintf(buf, "%02d:%02d:%02d", hour, minute, second);
+    lcd.print(buf);
+    lcd.setCursor(0, 0);
 
-
-    
   }
 
 
@@ -184,7 +187,7 @@ void loop() {
               TEMP = roundf(TEMP * 10) / 10;
               Serial.println(TEMP, 1);
               lcd.clear();
-              lcd.setCursor(0,0);
+              lcd.setCursor(0, 0);
               lcd.print(TEMP, 1);
               break;
             }
@@ -196,7 +199,7 @@ void loop() {
       break;
     }
 
-    
+
   }
 
   //미세먼지
@@ -218,18 +221,18 @@ void loop() {
       tagInside = false;
       //Serial.println(currentTag);
       if (currentTag.startsWith("</pm10Grade1h")) {
-      
-//        //Serial.println(tempValue);
-//        int quote = pm10Grade.indexOf("\"");
-//        //Serial.println(quote);
-//        pm10Grade = pm10Grade.substring(0, quote);
+
+        //        //Serial.println(tempValue);
+        //        int quote = pm10Grade.indexOf("\"");
+        //        //Serial.println(quote);
+        //        pm10Grade = pm10Grade.substring(0, quote);
 
         Serial.print("pm10 : ");
-//        int len = pm10Grade.length();
-//        char pm10_char[len + 1];
-//        int pm10;
-//        strcpy(pm10_char, pm10Grade.c_str());
-//        pm10 = atoi(pm10_char);
+        //        int len = pm10Grade.length();
+        //        char pm10_char[len + 1];
+        //        int pm10;
+        //        strcpy(pm10_char, pm10Grade.c_str());
+        //        pm10 = atoi(pm10_char);
         Serial.println(currentData);
         int len = currentData.length();
         char pm10_char[len + 1];
@@ -265,19 +268,19 @@ void loop() {
       //Serial.println(currentTag);
       if (currentTag.startsWith("</pm25Grade1h")) {
 
-//        //Serial.print("debug2");
-//        String pm25Grade = currentTag.substring(attribValue + 7);
-//        //Serial.println(tempValue);
-//        int quote = pm25Grade.indexOf("\"");
-//        //Serial.println(quote);
-//        pm25Grade = pm25Grade.substring(0, quote);
+        //        //Serial.print("debug2");
+        //        String pm25Grade = currentTag.substring(attribValue + 7);
+        //        //Serial.println(tempValue);
+        //        int quote = pm25Grade.indexOf("\"");
+        //        //Serial.println(quote);
+        //        pm25Grade = pm25Grade.substring(0, quote);
 
         Serial.print("pm25 : ");
-//          int len = pm25Grade.length();
-//          char pm25_char[len + 1];
-//          int pm25;
-//          strcpy(pm25_char, pm25Grade.c_str());
-//          pm25 = atoi(pm25_char);
+        //          int len = pm25Grade.length();
+        //          char pm25_char[len + 1];
+        //          int pm25;
+        //          strcpy(pm25_char, pm25Grade.c_str());
+        //          pm25 = atoi(pm25_char);
         Serial.println(currentData);
         int len = currentData.length();
         char pm25_char[len + 1];
@@ -291,7 +294,7 @@ void loop() {
         lcd.setCursor(0, 1);
         lcd.print("pm25 : ");
         lcd.print(Grade25);
-        
+
         //Serial.println(tempValue);
       }
       currentTag = "";
@@ -300,15 +303,28 @@ void loop() {
   }
 
   //한 loop에 실행시간은 1초보다 적다고 가정하면
-  while(true){
-    if(millis()-timeVal>=1000){
-      break; 
+  while (true) {
+    if (millis() - timeVal >= 1000) {
+      if(second != 59) second++;
+      else {
+        second = 0;
+        if(minute != 59) minute++;
+        else {
+          minute = 0;
+          if(hour != 24) hour++;
+          else {
+            hour = 0;
+            //숙제 : 년, 원, 일 추가하기
+          }
+        }
+      }
+      break;
     }
-    
-    loop(1);
+
+    delay(1);
   }
-  
-  
+
+
 }
 
 
@@ -345,26 +361,26 @@ void dust_connectToServer() {
   ret = WiFi.hostByName("openapi.airkorea.or.kr", hostIp_dust);
   Serial.print("ret: ");
   Serial.println(ret);
-  
+
   Serial.print("dust Host IP: ");
   Serial.println(hostIp_dust);
   Serial.println("");
-  
+
   Serial.println("connecting to server...");
   String content = "";
-  if (client_temp.connect(hostIp_dust, 80)) {
+  if (client_dust.connect(hostIp_dust, 80)) {
     //    Serial.println("Connected! Making HTTP request to www.kma.go.kr");
     //Serial.println("GET /data/2.5/weather?q="+location+"&mode=xml");
     //client_temp.println("GET /wid/queryDFSRSS.jsp?zone=2818583000 HTTP/1.1");
 
-    client_temp.print("GET /openapi/services/rest/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty?stationName=동춘&dataTerm=DAILY&pageNo=1&numOfRows=10&ServiceKey=FVwLFQquorwlohyjpsSO19Ipral144vU9eqQMKN65T6Y%2FpSapVoGUa%2B%2BwNibqh78iMAJpzPGNJRPYmc0DWC3uw%3D%3D");
+    client_dust.print("GET /openapi/services/rest/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty?stationName=동춘&dataTerm=DAILY&pageNo=1&numOfRows=10&ServiceKey=FVwLFQquorwlohyjpsSO19Ipral144vU9eqQMKN65T6Y%2FpSapVoGUa%2B%2BwNibqh78iMAJpzPGNJRPYmc0DWC3uw%3D%3D");
     //위에 지정된 주소와 연결한다.
-    client_temp.println(" HTTP/1.1");
-    client_temp.print("HOST: openapi.airkorea.or.kr\n");
+    client_dust.println(" HTTP/1.1");
+    client_dust.print("HOST: openapi.airkorea.or.kr\n");
     //client_temp.println("User-Agent: launchpad-wifi");
-    client_temp.println("Connection: close");
+    client_dust.println("Connection: close");
 
-    client_temp.println();
+    client_dust.println();
     Serial.println("client_dust Read Print ");
     Serial.println("");
   }
@@ -376,11 +392,11 @@ void temp_connectToServer() {
   ret = WiFi.hostByName("api.openweathermap.org", hostIp_temp);
   Serial.print("ret: ");
   Serial.println(ret);
-  
+
   Serial.print("temp Host IP: ");
   Serial.println(hostIp_temp);
   Serial.println("");
-  
+
   Serial.println("connecting to server...");
   String content = "";
   if (client_temp.connect(hostIp_temp, 80)) {
@@ -403,48 +419,67 @@ void temp_connectToServer() {
 }
 
 void time_connectToServer() {
-  unsigned long highWord = word(packetBuffer[40], packetBuffer[41]);
-  unsigned long lowWord = word(packetBuffer[42], packetBuffer[43]);
-  unsigned long secsSince1900 = highWord << 16 | lowWord;
-  const unsigned long seventyYears = 2208988800UL;
-  unsigned long epoch_first = secsSince1900 - seventyYears;
+  while (!client_time.connect("google.com", 80)) {}
+  client_time.print("HEAD / HTTP/1.1\r\n\r\n");
+  while (!client_time.available()) {}
 
-  while (true)
-  {
-    lcd.clear();
-    delay(1);
+  while (client_time.available()) {
+    if (client_time.read() == '\n') {
+      if (client_time.read() == 'D') {
+        if (client_time.read() == 'a') {
+          if (client_time.read() == 't') {
+            if (client_time.read() == 'e') {
+              if (client_time.read() == ':') {
+                client_time.read();
+                String timeData = client_time.readStringUntil('\r');
+                client_time.stop();
+                timeData.toCharArray(buf, 30);
 
-    Udp.begin(localPort);
-    sendNTPpacket(timeServer);
-    delay(1000);
-    int parse_packet = 0;
-    parse_packet = Udp.parsePacket();
-    Serial.println(parse_packet);
-    Serial.println("");
+                time_cut = strtok(buf, ", :");
+                for (int i = 0; time_cut; i++) {
+                  time_val[i] = time_cut;
+                  time_cut = strtok(0, ", :");
+                }
+                year   = atoi(time_val[3]);
+                month  = month_to_digit((char *)time_val[2]);
+                date   = atoi(time_val[1]);
+                day    = day_to_digit((char *)time_val[0]);
+                hour   = atoi(time_val[4]) + 9;
+                minute = atoi(time_val[5]);
+                second = atoi(time_val[6]);
 
-    Udp.read(packetBuffer, NTP_PACKET_SIZE);
-    Serial.print("time_connection_attempt = ");
-    Serial.println(time_connection_attempt);
-    if (parse_packet == 48) {
-      Serial.println("ParsePacket == 48");
-      Serial.println(epoch_first);
+                if (hour > 23) {
+                  hour %= 24;
+                  if (++day > 6) day = 0;
+                  if     (!(year % 400)) DaysOfMonth[1] = 29; // 윤년/윤달 계산
+                  else if (!(year % 100)) DaysOfMonth[1] = 28;
+                  else if (!(year %  4)) DaysOfMonth[1] = 29;
 
-      time_connection_attempt ++;
-      lcd.print("count = ");
-      lcd.print(time_connection_attempt);
-      lcd.clear();
-      if (time_connection_attempt == 5) {
-        is_first = false;
-
-        //대한민국 보정
-        epoch_first = epoch_first + 9 * 60 * 60;
-        epoch = epoch_first;
-        break;
+                  if (date < DaysOfMonth[month - 1]) date++;
+                  else {
+                    date = 1;
+                    if (++month > 12) {
+                      month = 1;
+                      year++;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
+    }
+  }
+}
 
-    }
-    else {
-      time_connection_attempt = 0;
-    }
+int month_to_digit(char* str) {
+  for(int i=0; i<12; i++) {
+      if(!strncmp(str, (char *)month_arr[i], 3)) return i+1;
+  }
+}
+int day_to_digit(char* str) {
+  for(int i=0; i<7; i++) {
+      if(!strncmp(str, (char *)day_arr[i], 3)) return i;
   }
 }

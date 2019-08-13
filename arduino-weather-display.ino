@@ -63,6 +63,7 @@ bool flagPm10startTag = false;
 bool flagPm25startTag = false;
 bool pm10_printed = false;
 bool pm25_printed = false;
+char c;
 
 //LCD
 LiquidCrystal lcd(12, 11, 2, 3, 4, 5);
@@ -111,11 +112,13 @@ void setup() {
   Serial.println("/");
 
   delay(3000);
-  //시간
-  time_connectToServer();
+
 
   //온도
   temp_connectToServer();
+
+  //시간
+  time_connectToServer();
 
   //미세먼지
   dust_connectToServer();
@@ -143,7 +146,7 @@ void loop() {
   //시간
   if (button_state == 0) {
 
-    ///time_connectToServer();
+    //time_connectToServer();
     lcd.clear();
     sprintf(buf, "%04d/%02d/%02d %s", year, month, date, day_arr[day]);
     lcd.print(buf);
@@ -163,9 +166,9 @@ void loop() {
   if (button_state == 1) {
     if (loop_cnt >= 29) {
       loop_cnt = 0;
-      
+
     }
-    else if(loop_cnt == 0){
+    else if (loop_cnt == 0) {
       lcd.clear();
       temp_connectToServer();
       delay(3000);
@@ -207,7 +210,7 @@ void loop() {
                 TEMP -= 273.16;
                 TEMP = roundf(TEMP * 10) / 10;
                 Serial.println(TEMP, 1);
-                
+
                 lcd.setCursor(0, 0);
                 lcd.print(TEMP, 1);
                 break;
@@ -221,7 +224,7 @@ void loop() {
       }
       loop_cnt++;
     }
-    else{
+    else {
       loop_cnt++;
     }
   }
@@ -235,13 +238,13 @@ void loop() {
     if (loop_cnt >= 29) {
       loop_cnt = 0;
     }
-    else if (loop_cnt == 0){
+    else if (loop_cnt == 0) {
       lcd.begin(16, 2);
       lcd.clear();
       dust_connectToServer();
       while (pm10_printed == false)
       {
-        char c = client_dust.read();
+        c = client_dust.read();
         if (c == '<') {
           tagInside = true;
         }
@@ -251,65 +254,16 @@ void loop() {
           currentData += c;
         }
         else {}
-        if (c == '>') {
-          //Serial.print("debug0");
-          //Serial.println(currentTag);
-          tagInside = false;
-          //Serial.println(currentTag);
-          if (currentTag.startsWith("<pm10Grade1h>")) {
-            flagPm10startTag = true;
-          }
-          else {
-            flagPm10startTag = false;
-          }
-
-          if (currentTag.startsWith("</pm10Grade1h")) {
-
-            //        //Serial.println(tempValue);
-            //        int quote = pm10Grade.indexOf("\"");
-            //        //Serial.println(quote);
-            //        pm10Grade = pm10Grade.substring(0, quote);
-
-            Serial.print("pm10 : ");
-            //        int len = pm10Grade.length();
-            //        char pm10_char[len + 1];
-            //        int pm10;
-            //        strcpy(pm10_char, pm10Grade.c_str());
-            //        pm10 = atoi(pm10_char);
-            Serial.println(currentTag);
-            Serial.println(currentData);
-            int len = currentData.length();
-            char pm10_char[len + 1];
-            strcpy(pm10_char, currentData.c_str());
-            int pm10 = atoi(pm10_char);
-            String Grade10;
-            if (pm10 == 1) Grade10 = "Good";
-            else if (pm10 == 2) Grade10 = "Normal";
-            else if (pm10 == 3) Grade10 = "Bad";
-            else if (pm10 == 4) Grade10 = "VeryBad";
-            lcd.setCursor(0, 0);
-            lcd.print("pm10 : ");
-            lcd.print(Grade10);
-            Serial.print("pm10 : ");
-
-            Serial.println(Grade10);
-            pm10_printed = true;
-
-          }
-          currentTag = "";
-          currentData = "";
-
-        }
-        //tagInside = false;
-
+        pm10_print();
       }
+
 
 
       pm25_printed = false;
       while (pm25_printed == false)
       {
         //Serial.println("pm25 inside");
-        char c = client_dust.read();
+        c = client_dust.read();
         //Serial.print(c);
         if (c == '<') {
           tagInside = true;
@@ -320,91 +274,159 @@ void loop() {
           currentData += c;
         }
         else {}
-
-        if (c == '>') {
-          //Serial.print("debug0");
-          //Serial.println(currentTag);
-          tagInside = false;
-          //Serial.println(currentTag);
-          if (currentTag.startsWith("<pm25Grade1h>")) {
-            flagPm25startTag = true;
-          }
-          else {
-            flagPm25startTag = false;
-          }
-
-          if (currentTag.startsWith("</pm25Grade1h")) {
-
-            //        //Serial.print("debug2");
-            //        String pm25Grade = currentTag.substring(attribValue + 7);
-            //        //Serial.println(tempValue);
-            //        int quote = pm25Grade.indexOf("\"");
-            //        //Serial.println(quote);
-            //        pm25Grade = pm25Grade.substring(0, quote);
-
-            //Serial.print("pm25 : ");
-            //          int len = pm25Grade.length();
-            //          char pm25_char[len + 1];
-            //          int pm25;
-            //          strcpy(pm25_char, pm25Grade.c_str());
-            //          pm25 = atoi(pm25_char);
-            ///Serial.println(currentData);
-            int len = currentData.length();
-            char pm25_char[len + 1];
-            strcpy(pm25_char, currentData.c_str());
-            int pm25 = atoi(pm25_char);
-            String Grade25;
-            if (pm25 == 1) Grade25 = "Good";
-            else if (pm25 == 2) Grade25 = "Normal";
-            else if (pm25 == 3) Grade25 = "Bad";
-            else if (pm25 == 4) Grade25 = "VeryBad";
-            lcd.setCursor(0, 1);
-            lcd.print("pm25 : ");
-            lcd.print(Grade25);
-            Serial.print("pm25 : ");
-            Serial.println(Grade25);
-
-            //Serial.println(tempValue);
-            pm25_printed = true;
-          }
-          currentTag = "";
-          currentData = "";
-
-        }
+        pm25_print();
 
       }
-      tagInside = false;
-      loop_cnt ++;
     }
+
     else {
       loop_cnt++;
     }
 
   }
   while (true) {
-    if (button_state==2){
-      if (loopTimeSynchronizer(5) {
-        break; 
-      }
+    if (button_state == 2) {
+      if (loopTimeSynchronizer(5)) {
+      break;
     }
-    else {
-      if (loopTimeSynchronizer(1)) {
+  }
+
+  else {
+    if (loopTimeSynchronizer(1)) {
         break;
       }
     }
-    
+
     delay(1);
   }
+
+
 }
+
+
+
+void pm10_print()
+{
+  if (c == '>') {
+    //Serial.print("debug0");
+    //Serial.println(currentTag);
+    tagInside = false;
+    //Serial.println(currentTag);
+    if (currentTag.startsWith("<pm10Grade1h>")) {
+      flagPm10startTag = true;
+    }
+    else {
+      flagPm10startTag = false;
+    }
+
+    if (currentTag.startsWith("</pm10Grade1h")) {
+
+      //        //Serial.println(tempValue);
+      //        int quote = pm10Grade.indexOf("\"");
+      //        //Serial.println(quote);
+      //        pm10Grade = pm10Grade.substring(0, quote);
+
+      Serial.print("pm10 : ");
+      //        int len = pm10Grade.length();
+      //        char pm10_char[len + 1];
+      //        int pm10;
+      //        strcpy(pm10_char, pm10Grade.c_str());
+      //        pm10 = atoi(pm10_char);
+      Serial.println(currentTag);
+      Serial.println(currentData);
+      int len = currentData.length();
+      char pm10_char[len + 1];
+      strcpy(pm10_char, currentData.c_str());
+      int pm10 = atoi(pm10_char);
+      String Grade10;
+      if (pm10 == 1) Grade10 = "Good";
+      else if (pm10 == 2) Grade10 = "Normal";
+      else if (pm10 == 3) Grade10 = "Bad";
+      else if (pm10 == 4) Grade10 = "VeryBad";
+      lcd.setCursor(0, 0);
+      lcd.print("pm10 : ");
+      lcd.print(Grade10);
+      Serial.print("pm10 : ");
+
+      Serial.println(Grade10);
+      pm10_printed = true;
+
+    }
+    currentTag = "";
+    currentData = "";
+
+  }
+
+}
+
+void pm25_print()
+{
+  //tagInside = false;
+  if (c == '>') {
+    //Serial.print("debug0");
+    //Serial.println(currentTag);
+    tagInside = false;
+    //Serial.println(currentTag);
+    if (currentTag.startsWith("<pm25Grade1h>")) {
+      flagPm25startTag = true;
+    }
+    else {
+      flagPm25startTag = false;
+    }
+
+    if (currentTag.startsWith("</pm25Grade1h")) {
+
+      //        //Serial.print("debug2");
+      //        String pm25Grade = currentTag.substring(attribValue + 7);
+      //        //Serial.println(tempValue);
+      //        int quote = pm25Grade.indexOf("\"");
+      //        //Serial.println(quote);
+      //        pm25Grade = pm25Grade.substring(0, quote);
+
+      //Serial.print("pm25 : ");
+      //          int len = pm25Grade.length();
+      //          char pm25_char[len + 1];
+      //          int pm25;
+      //          strcpy(pm25_char, pm25Grade.c_str());
+      //          pm25 = atoi(pm25_char);
+      ///Serial.println(currentData);
+      int len = currentData.length();
+      char pm25_char[len + 1];
+      strcpy(pm25_char, currentData.c_str());
+      int pm25 = atoi(pm25_char);
+      String Grade25;
+      if (pm25 == 1) Grade25 = "Good";
+      else if (pm25 == 2) Grade25 = "Normal";
+      else if (pm25 == 3) Grade25 = "Bad";
+      else if (pm25 == 4) Grade25 = "VeryBad";
+      lcd.setCursor(0, 1);
+      lcd.print("pm25 : ");
+      lcd.print(Grade25);
+      Serial.print("pm25 : ");
+      Serial.println(Grade25);
+
+      //Serial.println(tempValue);
+      pm25_printed = true;
+    }
+    currentTag = "";
+    currentData = "";
+
+  }
+  tagInside = false;
+  loop_cnt++;
+}
+
+
+
 
 //period_in_sec should be less than 10!!!!!!!!!!!!!!!!
 bool loopTimeSynchronizer(int period_in_sec) {
-  if (millis() - timeVal >= period_in_sec*1000) {
-    if (second < (60-period_in_sec)) {
+  if (millis() - timeVal >= period_in_sec * 1000) {
+    if (second < (60 - period_in_sec)) {
       second += period_in_sec;
     }
     else {
-      second = (second+period_in_sec)%60;
+      second = (second + period_in_sec) % 60;
       if (minute != 59) {
         minute++;
       }
@@ -420,7 +442,7 @@ bool loopTimeSynchronizer(int period_in_sec) {
     return true;
   }
 
-  return false;    
+  return false;
 }
 
 
@@ -451,6 +473,62 @@ unsigned long sendNTPpacket(IPAddress & address) {
   //Serial.println("5");
   Udp.endPacket();
   //Serial.println("6");
+}
+
+
+void time_connectToServer() {
+  while (!client_time.connect("google.com", 80)) {}
+  client_time.print("HEAD / HTTP/1.1\r\n\r\n");
+  while (!client_time.available()) {}
+
+  while (client_time.available()) {
+    if (client_time.read() == '\n') {
+      if (client_time.read() == 'D') {
+        if (client_time.read() == 'a') {
+          if (client_time.read() == 't') {
+            if (client_time.read() == 'e') {
+              if (client_time.read() == ':') {
+                client_time.read();
+                String timeData = client_time.readStringUntil('\r');
+                client_time.stop();
+                timeData.toCharArray(buf, 30);
+
+                time_cut = strtok(buf, ", :");
+                for (int i = 0; time_cut; i++) {
+                  time_val[i] = time_cut;
+                  time_cut = strtok(0, ", :");
+                }
+                year   = atoi(time_val[3]);
+                month  = month_to_digit((char *)time_val[2]);
+                date   = atoi(time_val[1]);
+                day    = day_to_digit((char *)time_val[0]);
+                hour   = atoi(time_val[4]) + 9;
+                minute = atoi(time_val[5]);
+                second = atoi(time_val[6]);
+
+                if (hour > 23) {
+                  hour %= 24;
+                  if (++day > 6) day = 0;
+                  if     (!(year % 400)) DaysOfMonth[1] = 29; // 윤년/윤달 계산
+                  else if (!(year % 100)) DaysOfMonth[1] = 28;
+                  else if (!(year %  4)) DaysOfMonth[1] = 29;
+
+                  if (date < DaysOfMonth[month - 1]) date++;
+                  else {
+                    date = 1;
+                    if (++month > 12) {
+                      month = 1;
+                      year++;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 void dust_connectToServer() {
@@ -514,60 +592,6 @@ void temp_connectToServer() {
   }
 }
 
-void time_connectToServer() {
-  while (!client_time.connect("google.com", 80)) {}
-  client_time.print("HEAD / HTTP/1.1\r\n\r\n");
-  while (!client_time.available()) {}
-
-  while (client_time.available()) {
-    if (client_time.read() == '\n') {
-      if (client_time.read() == 'D') {
-        if (client_time.read() == 'a') {
-          if (client_time.read() == 't') {
-            if (client_time.read() == 'e') {
-              if (client_time.read() == ':') {
-                client_time.read();
-                String timeData = client_time.readStringUntil('\r');
-                client_time.stop();
-                timeData.toCharArray(buf, 30);
-
-                time_cut = strtok(buf, ", :");
-                for (int i = 0; time_cut; i++) {
-                  time_val[i] = time_cut;
-                  time_cut = strtok(0, ", :");
-                }
-                year   = atoi(time_val[3]);
-                month  = month_to_digit((char *)time_val[2]);
-                date   = atoi(time_val[1]);
-                day    = day_to_digit((char *)time_val[0]);
-                hour   = atoi(time_val[4]) + 9;
-                minute = atoi(time_val[5]);
-                second = atoi(time_val[6]);
-
-                if (hour > 23) {
-                  hour %= 24;
-                  if (++day > 6) day = 0;
-                  if     (!(year % 400)) DaysOfMonth[1] = 29; // 윤년/윤달 계산
-                  else if (!(year % 100)) DaysOfMonth[1] = 28;
-                  else if (!(year %  4)) DaysOfMonth[1] = 29;
-
-                  if (date < DaysOfMonth[month - 1]) date++;
-                  else {
-                    date = 1;
-                    if (++month > 12) {
-                      month = 1;
-                      year++;
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
 
 int month_to_digit(char* str) {
   for (int i = 0; i < 12; i++) {

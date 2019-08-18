@@ -149,6 +149,9 @@ void setup() {
   lcd.setCursor(0, 0);
   lcd.clear();
   lcd.print("Connected");
+  lcd.setCursor(0, 1);
+  lcd.print("Incheon Yeonsu");
+  lcd.setCursor(0, 0);
 
   // Start the server
   server.begin();

@@ -59,12 +59,60 @@ String tempValue = "";
 int button_state;
 
 //미세먼지
-bool flagPm10startTag = false;
-bool flagPm25startTag = false;
-bool pm10_printed = false;
-bool pm25_printed = false;
+bool flagPmStartTag = false;
+bool pm_printed = false;
 char c;
-char c2;
+byte celsius[8] = {
+  B00110,
+  B01001,
+  B01001,
+  B00110,
+  B00000,
+  B00000,
+  B00000,
+  B00000
+};
+byte mi[8] = {
+  B00000,
+  B00001,
+  B11101,
+  B10101,
+  B11101,
+  B00001,
+  B00000,
+  B00000
+};
+byte seeot[8] = {
+  B00000,
+  B00000,
+  B00100,
+  B01010,
+  B10001,
+  B00000,
+  B00000,
+  B00000
+};
+byte ehh[8] = {
+  B00000,
+  B00101,
+  B00101,
+  B11101,
+  B00101,
+  B00101,
+  B00000,
+  B00000
+};
+byte cho[8] = {
+  B00100,
+  B00100,
+  B11111,
+  B01010,
+  B10101,
+  B00100,
+  B11111,
+  B00000
+};
+
 
 //LCD
 LiquidCrystal lcd(12, 11, 2, 3, 4, 5);
@@ -171,6 +219,8 @@ void loop() {
     }
     else if (loop_cnt == 0) {
       lcd.clear();
+      lcd.begin(16, 2);
+      lcd.createChar(0, celsius);
       temp_connectToServer();
       delay(3000);
       while (client_temp.connected()) {
@@ -213,7 +263,10 @@ void loop() {
                 Serial.println(TEMP, 1);
 
                 lcd.setCursor(0, 0);
+                lcd.print("temp : ");
                 lcd.print(TEMP, 1);
+                lcd.write(byte(0));
+                lcd.print("C");
                 break;
               }
               //Serial.println(tempValue);
@@ -235,31 +288,34 @@ void loop() {
 
   //미세먼지
   if (button_state == 2) {
-    pm10_printed = false;
-    pm25_printed = false;
+    
+    pm_printed = false;
 
     if (loop_cnt >= 29) {
       loop_cnt = 0;
     }
     else if (loop_cnt == 0) {
       lcd.begin(16, 2);
-      lcd.clear();
+      lcd.createChar(4, mi);
+      lcd.createChar(2, seeot);
+      lcd.createChar(3, ehh);
+      lcd.createChar(1, cho);
       dust_connectToServer();
 
-      while (pm10_printed == false)
+      while (pm_printed == false)
       {
         c = client_dust.read();
-        //Serial.print(c);
         if (c == '<') {
           tagInside = true;
         }
         if (tagInside == true) {
           currentTag += c;
-        } else if (flagPm10startTag) {
+        } else if (flagPmStartTag) {
           currentData += c;
         }
         else {}
-        pm10_print();
+        lcd.setCursor(0, 0);
+        air_quality_print(10);
         //pm10_printed = true;
       }
 
@@ -268,40 +324,37 @@ void loop() {
       startTag = ""; // 현재 elements의 start tag 저장
       endTag = "";   // 현재 elements의 end tag 저장
       tempValue = "";
+      c = "";
+      pm_printed = false;
 
-      int counter_pm25_try = 0;
-      while (pm25_printed == false)
+      while (pm_printed == false)
       {
-        c2 = client_dust.read();
+        c = client_dust.read();
         //Serial.print(c2);
-        if (c2 == '<') {
+        if (c == '<') {
           tagInside = true;
         }
         if (tagInside == true) {
-          currentTag += c2;
-        } else if (flagPm25startTag) {
-          currentData += c2;
+          currentTag += c;
+        } else if (flagPmStartTag) {
+          currentData += c;
         }
         else {}
-        if (counter_pm25_try >= 1000) {
-          pm25_print(false);
-        }
-        else {
-          pm25_print(true);
-        }
-        counter_pm25_try++;
-        //pm25_printed = true;
-        loop_cnt++;
+        lcd.setCursor(0, 1);
+        air_quality_print(25);
       }
+
+      loop_cnt++;
     }
 
     else {
       loop_cnt++;
     }
     Serial.println("button 2 finished!");
+    Serial.println(loop_cnt);
   }
 
-  
+
   while (true) {
     if (button_state == 2) {
       if (loopTimeSynchronizer(5)) {
@@ -309,8 +362,8 @@ void loop() {
       }
     }
 
-    else if(button_state == 1){
-      if(loopTimeSynchronizer(5)){
+    else if (button_state == 1) {
+      if (loopTimeSynchronizer(5)) {
         break;
       }
     }
@@ -329,127 +382,51 @@ void loop() {
 
 }
 
+void air_quality_print(int option) {
+  String option_to_string = String(option);
+  String target_tag;
 
-
-void pm10_print()
-{
   if (c == '>') {
     //Serial.print("debug0");
     //Serial.println(currentTag);
     tagInside = false;
-    Serial.println(currentTag);
-    if (currentTag.startsWith("<pm10Grade1h>")) {
-      flagPm10startTag = true;
+    target_tag = "<pm" + option_to_string + "Grade1h>";
+
+    if (currentTag.startsWith(target_tag)) {
+      flagPmStartTag = true;
     }
     else {
-      flagPm10startTag = false;
+      flagPmStartTag = false;
     }
+    
+    target_tag = "</pm" + option_to_string + "Grade1h>";
 
-    if (currentTag.startsWith("</pm10Grade1h")) {
-
-      //        //Serial.println(tempValue);
-      //        int quote = pm10Grade.indexOf("\"");
-      //        //Serial.println(quote);
-      //        pm10Grade = pm10Grade.substring(0, quote);
-
-      Serial.print("pm10 : ");
-      //        int len = pm10Grade.length();
-      //        char pm10_char[len + 1];
-      //        int pm10;
-      //        strcpy(pm10_char, pm10Grade.c_str());
-      //        pm10 = atoi(pm10_char);
-      Serial.println(currentTag);
-      Serial.println(currentData);
+    if (currentTag.startsWith(target_tag)) {
+      Serial.print("pm" + option_to_string + ": ");
       int len = currentData.length();
-      char pm10_char[len + 1];
-      strcpy(pm10_char, currentData.c_str());
-      int pm10 = atoi(pm10_char);
-      String Grade10;
-      if (pm10 == 1) Grade10 = "Good";
-      else if (pm10 == 2) Grade10 = "Normal";
-      else if (pm10 == 3) Grade10 = "Bad";
-      else if (pm10 == 4) Grade10 = "VeryBad";
-      lcd.setCursor(0, 0);
-      lcd.print("pm10 : ");
-      lcd.print(Grade10);
-      Serial.print("pm10 : ");
-
-      Serial.println(Grade10);
-      pm10_printed = true;
-
+      char pm_char[len + 1];
+      strcpy(pm_char, currentData.c_str());
+      int pm = atoi(pm_char);
+      String Grade;
+      if (pm == 1) Grade = "Good";
+      else if (pm == 2) Grade = "Normal";
+      else if (pm == 3) Grade = "Bad";
+      else if (pm == 4) Grade = "VeryBad";
+      if(option == 25){
+        lcd.write(byte(1));
+      }
+      lcd.write(byte(4));
+      lcd.write(byte(2));
+      lcd.write(byte(3));
+      lcd.print(": ");
+      lcd.print(Grade);
+      pm_printed = true;
     }
     currentTag = "";
     currentData = "";
-
-  }
-
-}
-
-void pm25_print(bool try_)
-{
-  if (try_ == true) {
-    //tagInside = false;
-    if (c2 == '>') {
-      //Serial.print("debug0");
-      Serial.println(currentTag);
-      tagInside = false;
-      //Serial.println(currentTag);
-      if (currentTag.startsWith("<pm25Grade1h>")) {
-        flagPm25startTag = true;
-      }
-      else {
-        flagPm25startTag = false;
-      }
-
-      if (currentTag.startsWith("</pm25Grade1h")) {
-
-        //        //Serial.print("debug2");
-        //        String pm25Grade = currentTag.substring(attribValue + 7);
-        //        //Serial.println(tempValue);
-        //        int quote = pm25Grade.indexOf("\"");
-        //        //Serial.println(quote);
-        //        pm25Grade = pm25Grade.substring(0, quote);
-
-        //Serial.print("pm25 : ");
-        //          int len = pm25Grade.length();
-        //          char pm25_char[len + 1];
-        //          int pm25;
-        //          strcpy(pm25_char, pm25Grade.c_str());
-        //          pm25 = atoi(pm25_char);
-        ///Serial.println(currentData);
-        int len = currentData.length();
-        char pm25_char[len + 1];
-        strcpy(pm25_char, currentData.c_str());
-        int pm25 = atoi(pm25_char);
-        String Grade25;
-        if (pm25 == 1) Grade25 = "Good";
-        else if (pm25 == 2) Grade25 = "Normal";
-        else if (pm25 == 3) Grade25 = "Bad";
-        else if (pm25 == 4) Grade25 = "VeryBad";
-        lcd.setCursor(0, 1);
-        lcd.print("pm25 : ");
-        lcd.print(Grade25);
-        Serial.print("pm25 : ");
-        Serial.println(Grade25);
-
-        //Serial.println(tempValue);
-        pm25_printed = true;
-      }
-      currentTag = "";
-      currentData = "";
-
-    }
     
   }
-  else if (try_ == false) {
-    lcd.setCursor(0, 1);
-    lcd.print("pm25 : UNKNOWN");
-    Serial.print("pm25 : UNKNOWN"); 
-    pm25_printed = true;
-  }
 }
-
-
 
 
 //period_in_sec should be less than 10!!!!!!!!!!!!!!!!

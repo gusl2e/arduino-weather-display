@@ -249,7 +249,7 @@ void loop() {
       while (pm10_printed == false)
       {
         c = client_dust.read();
-        Serial.print(c);
+        //Serial.print(c);
         if (c == '<') {
           tagInside = true;
         }
@@ -262,6 +262,12 @@ void loop() {
         pm10_print();
         //pm10_printed = true;
       }
+
+      currentTag = "";
+      currentData = ""; // 태그 사이의 컨텐츠를 저장하는 변수
+      startTag = ""; // 현재 elements의 start tag 저장
+      endTag = "";   // 현재 elements의 end tag 저장
+      tempValue = "";
 
       int counter_pm25_try = 0;
       while (pm25_printed == false)
@@ -283,7 +289,7 @@ void loop() {
         else {
           pm25_print(true);
         }
-        counter_pm25_try ++;
+        counter_pm25_try++;
         //pm25_printed = true;
         loop_cnt++;
       }
@@ -331,7 +337,7 @@ void pm10_print()
     //Serial.print("debug0");
     //Serial.println(currentTag);
     tagInside = false;
-    //Serial.println(currentTag);
+    Serial.println(currentTag);
     if (currentTag.startsWith("<pm10Grade1h>")) {
       flagPm10startTag = true;
     }
@@ -385,9 +391,9 @@ void pm25_print(bool try_)
     //tagInside = false;
     if (c2 == '>') {
       //Serial.print("debug0");
-      //Serial.println(currentTag);
-      tagInside = false;
       Serial.println(currentTag);
+      tagInside = false;
+      //Serial.println(currentTag);
       if (currentTag.startsWith("<pm25Grade1h>")) {
         flagPm25startTag = true;
       }
@@ -433,7 +439,6 @@ void pm25_print(bool try_)
       currentData = "";
 
     }
-    tagInside = false;
     
   }
   else if (try_ == false) {

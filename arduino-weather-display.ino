@@ -582,7 +582,7 @@ void temp_connectToServer() {
 
   Serial.print("temp Host IP: ");
   Serial.println(hostIp_temp);
-  Serial.println("");
+  Serial.println();
 
   Serial.println("connecting to server...");
   String content = "";
